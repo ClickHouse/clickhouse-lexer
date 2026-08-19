@@ -1,0 +1,92 @@
+name: Sync from ClickHouse
+
+# Daily: copy the latest lexer sources from the main ClickHouse repository. If they
+# changed, rebuild lexer.wasm, regenerate the derived modules, run the tests, commit,
+# tag a patch release, create a GitHub release, and publish to npm.
+
+on:
+  schedule:
+    - cron: "30 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  id-token: write # npm --provenance / trusted publishing
+  actions: write # self re-enable (see below)
+
+concurrency:
+  group: sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # GitHub disables cron workflows after 60 days without repository activity;
+      # quiet periods upstream would otherwise silently stop the sync. Re-enabling is
+      # idempotent and counts as activity.
+      - name: Keep the schedule alive
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/sync.yml/enable"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Sync lexer sources from ClickHouse master
+        id: sync
+        run: |
+          set +e
+          bash scripts/sync.sh
+          status=$?
+          set -e
+          case $status in
+            0) echo "changed=true" >> "$GITHUB_OUTPUT" ;;
+            2) echo "changed=false" >> "$GITHUB_OUTPUT" ;;
+            *) exit $status ;;
+          esac
+
+      - if: steps.sync.outputs.changed == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - if: steps.sync.outputs.changed == 'true'
+        run: sudo apt-get update && sudo apt-get install -y clang lld
+
+      - if: steps.sync.outputs.changed == 'true'
+        name: Rebuild and test
+        run: |
+          npm run build
+          npm test
+
+      - if: steps.sync.outputs.changed == 'true'
+        name: Commit, tag and release
+        id: release
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          UPSTREAM=$(cat upstream/COMMIT)
+          git add -A
+          git commit -m "Sync lexer from ClickHouse/ClickHouse@${UPSTREAM}"
+          VERSION=$(npm version patch -m "Release %s")
+          git push --follow-tags
+          gh release create "$VERSION" \
+            --title "$VERSION" \
+            --notes "Lexer synced from [ClickHouse/ClickHouse@${UPSTREAM}](https://github.com/ClickHouse/ClickHouse/commit/${UPSTREAM})."
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - if: steps.sync.outputs.changed == 'true'
+        name: Publish to npm
+        run: |
+          # Trusted publishing (OIDC) needs a recent npm; harmless with token auth too.
+          npm install -g npm@latest
+          # Prefer the NPM_TOKEN secret when configured; otherwise rely on a
+          # configured npm Trusted Publisher for this repository + workflow.
+          if [ -n "$NPM_TOKEN" ]; then
+            echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > ~/.npmrc
+          fi
+          npm publish --provenance --access public
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

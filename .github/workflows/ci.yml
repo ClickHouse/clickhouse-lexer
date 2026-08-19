@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Test the committed artifacts (what would be published).
+      - run: npm test
+
+      # Rebuild the WASM from the vendored sources and test again, so the whole
+      # build pipeline is exercised on every change. The rebuilt binary may differ
+      # byte-for-byte from the committed one (toolchain versions differ) - that is
+      # fine; behavior is what the tests check.
+      - run: sudo apt-get update && sudo apt-get install -y clang lld
+      - run: npm run build
+      - run: npm test

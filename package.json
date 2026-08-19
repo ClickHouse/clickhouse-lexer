@@ -1,0 +1,42 @@
+{
+  "name": "@clickhouse/lexer",
+  "version": "1.0.0",
+  "description": "ClickHouse's SQL lexer compiled to WebAssembly — the exact tokenizer ClickHouse itself uses, in ~9 KB, with no dependencies",
+  "keywords": ["clickhouse", "sql", "lexer", "tokenizer", "wasm", "webassembly", "syntax-highlighting"],
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/ClickHouse/clickhouse-lexer",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ClickHouse/clickhouse-lexer.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ClickHouse/clickhouse-lexer/issues"
+  },
+  "type": "module",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    },
+    "./tokens": "./tokens.js",
+    "./lexer.wasm": "./lexer.wasm"
+  },
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "tokens.js",
+    "lexer-wasm-base64.js",
+    "lexer.wasm",
+    "upstream/"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "sync": "bash scripts/sync.sh",
+    "build": "bash scripts/build.sh && node scripts/generate.js",
+    "test": "node --test test/"
+  }
+}
