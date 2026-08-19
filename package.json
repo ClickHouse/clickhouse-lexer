@@ -37,6 +37,6 @@
   "scripts": {
     "sync": "bash scripts/sync.sh",
     "build": "bash scripts/build.sh && node scripts/generate.js",
-    "test": "node --test test/"
+    "test": "node --test test/test.js"
   }
 }
