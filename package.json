@@ -1,8 +1,16 @@
 {
   "name": "@clickhouse/lexer",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "ClickHouse's SQL lexer compiled to WebAssembly — the exact tokenizer ClickHouse itself uses, in ~9 KB, with no dependencies",
-  "keywords": ["clickhouse", "sql", "lexer", "tokenizer", "wasm", "webassembly", "syntax-highlighting"],
+  "keywords": [
+    "clickhouse",
+    "sql",
+    "lexer",
+    "tokenizer",
+    "wasm",
+    "webassembly",
+    "syntax-highlighting"
+  ],
   "license": "Apache-2.0",
   "homepage": "https://github.com/ClickHouse/clickhouse-lexer",
   "repository": {
