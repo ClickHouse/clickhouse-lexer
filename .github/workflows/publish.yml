@@ -1,0 +1,44 @@
+name: Publish to npm
+
+# Manually triggered: publish the package as it exists at a given tag to npm via
+# OIDC trusted publishing (no long-lived npm token). Kept separate from sync.yml so
+# that a sync can commit, tag, and create a GitHub release on its own, with
+# publishing to npm as a deliberate, reviewable button-press rather than an
+# automatic side effect.
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref (tag, e.g. v1.0.1) to publish"
+        required: true
+
+permissions:
+  contents: read
+  id-token: write # npm --provenance / trusted publishing
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Test committed artifacts
+        run: npm test
+
+      - name: Publish to npm with OIDC
+        run: |
+          # npm >= 11.5.1 supports OIDC trusted publishing; registry-url above is required for it.
+          npm install -g npm@latest
+          npm publish --provenance --access public
